@@ -80,3 +80,23 @@ export const POST: APIRoute = async (context: APIContext) => {
     );
   }
 }
+
+export const GET: APIRoute = async (context: APIContext) => {
+  try {
+    const STATIC_SALT_HEX = context.locals.runtime.env.STATIC_SALT;
+    const HMAC_KEY_HEX = context.locals.runtime.env.HMAC_KEY;
+
+    const securityCode = context.url.searchParams.get('code');
+    const validateResult = await validateSecurityCode(securityCode || "", STATIC_SALT_HEX, HMAC_KEY_HEX);
+    return new Response(JSON.stringify(validateResult.body), {
+      status: validateResult.status,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error: any) {
+    console.error('Error validating security code: ', error);
+    return new Response(
+      JSON.stringify({ error: 'Invalid security code' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' }}
+    );
+  }
+}
