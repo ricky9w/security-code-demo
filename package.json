@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@astrojs/cloudflare": "^12.2.1",
+    "@tailwindcss/vite": "^4.0.6",
     "astro": "^5.2.6",
-    "blakejs": "^1.2.1"
+    "blakejs": "^1.2.1",
+    "tailwindcss": "^4.0.6"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250204.0",
