@@ -1,0 +1,112 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const pageTitle = "产品防伪码验证";
+---
+
+<Layout title={pageTitle}>
+  <main class="max-w-screen-md mx-auto px-5 py-8 font-sans text-gray-800">
+    <h1 class="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-8">{pageTitle}</h1>
+    
+    <section id="validate-code-section" class="mb-8 p-6 border border-gray-300 rounded-md bg-white">
+      <h2 class="text-xl font-semibold text-gray-900 mt-0 mb-4">防伪码验证</h2>
+      <form id="validate-form" class="code-form flex flex-col gap-4">
+        <div class="form-group mb-4">
+          <label for="validate-code-input" class="block mb-2 font-medium text-gray-700">防伪码:</label>
+          <input
+          type="text"
+          id="validate-code-input"
+          name="securityCode"
+          placeholder="输入防伪码进行验证"
+          required
+          class="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800 focus:ring-2 focus:ring-gray-200 focus:border-gray-300"
+          />
+        </div>
+        <button type="submit" class="action-button px-5 py-2 bg-gray-800 text-white rounded-md cursor-pointer text-base hover:bg-gray-900 self-start">验证</button>
+        <div class="form-group mb-4">
+          <label for="validation-result-output" class="block mb-2 font-medium text-gray-700">验证结果:</label>
+          <textarea
+          id="validation-result-output"
+          readonly
+          placeholder="验证结果将显示在这里 (API Response Body)"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800 bg-gray-100 resize-none min-h-[9em] overflow-y-auto"
+          ></textarea>
+        </div>
+      </form>
+    </section>
+  </main>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const generateForm = document.getElementById('generate-form') as HTMLFormElement;
+      const validateForm = document.getElementById('validate-form') as HTMLFormElement;
+      const generatedCodeOutput = document.getElementById('generated-code-output') as HTMLTextAreaElement;
+      const validationResultOutput = document.getElementById('validation-result-output') as HTMLTextAreaElement;
+      const clickableOutput = document.querySelector('.clickable-output') as HTMLElement;
+      
+      clickableOutput?.addEventListener('click', async () => {
+        const text = generatedCodeOutput.value;
+        if (!text) return;
+        
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch (err) {
+          console.error('复制失败:', err);
+        }
+      });
+      
+      generateForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(generateForm);
+        const sku = (formData.get('sku') as string).trim().toUpperCase();
+        const channel = (formData.get('channel') as string).trim().toUpperCase();
+        
+        try {
+          const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ sku, channel })
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            generatedCodeOutput.value = `Error: ${response.status} ${response.statusText}\n${JSON.stringify(errorData, null, 2)}`;
+          } else {
+            const responseData = await response.json() as { securityCode: string };
+            generatedCodeOutput.value = responseData.securityCode;
+          }
+        } catch (error) {
+          generatedCodeOutput.value = `Fetch Error: ${error}`;
+        }
+      });
+      
+      validateForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(validateForm);
+        const securityCode = (formData.get('securityCode') as string).trim();
+        
+        try {
+          const response = await fetch('/api/validate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ securityCode })
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            validationResultOutput.value = `Error: ${response.status} ${response.statusText}\n${JSON.stringify(errorData, null, 2)}`;
+          } else {
+            const responseData = await response.json();
+            validationResultOutput.value = JSON.stringify(responseData, null, 2);
+          }
+        } catch (error) {
+          validationResultOutput.value = `Fetch Error: ${error}`;
+        }
+      });
+    });
+  </script>
+</Layout>
