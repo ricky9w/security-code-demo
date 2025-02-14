@@ -7,6 +7,7 @@ declare namespace App {
       env: {
         'STATIC_SALT': string;
         'HMAC_KEY': string;
+        'QR_BASE_URL': string;
       }
     }
   }

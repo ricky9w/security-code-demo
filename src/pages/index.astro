@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 
 const pageTitle = "产品防伪码 Demo";
+const QR_BASE_URL = Astro.locals.runtime.env.QR_BASE_URL;
 ---
 
 <Layout title={pageTitle}>
@@ -49,6 +50,13 @@ const pageTitle = "产品防伪码 Demo";
             ></textarea>
           </div>
         </div>
+        {QR_BASE_URL && (
+          <div>
+            <label class="block mb-2 font-medium text-gray-700">生成的二维码:</label>
+            <div id="qrcode">
+            </div>
+          </div>
+        )}
       </form>
     </section>
     
@@ -80,13 +88,15 @@ const pageTitle = "产品防伪码 Demo";
     </section>
   </main>
   
-  <script>
+  <script is:inline src="/libs/qrcode.min.js"></script>
+  <script define:vars={{ QR_BASE_URL }}>
     document.addEventListener('DOMContentLoaded', () => {
-      const generateForm = document.getElementById('generate-form') as HTMLFormElement;
-      const validateForm = document.getElementById('validate-form') as HTMLFormElement;
-      const generatedCodeOutput = document.getElementById('generated-code-output') as HTMLTextAreaElement;
-      const validationResultOutput = document.getElementById('validation-result-output') as HTMLTextAreaElement;
-      const clickableOutput = document.querySelector('.clickable-output') as HTMLElement;
+      const generateForm = document.getElementById('generate-form');
+      const validateForm = document.getElementById('validate-form');
+      const generatedCodeOutput = document.getElementById('generated-code-output');
+      const validationResultOutput = document.getElementById('validation-result-output');
+      const clickableOutput = document.querySelector('.clickable-output');
+      const qrcodeContainer = document.getElementById('qrcode');
       
       clickableOutput?.addEventListener('click', async () => {
         const text = generatedCodeOutput.value;
@@ -102,8 +112,8 @@ const pageTitle = "产品防伪码 Demo";
       generateForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(generateForm);
-        const sku = (formData.get('sku') as string).trim().toUpperCase();
-        const channel = (formData.get('channel') as string).trim().toUpperCase();
+        const sku = (formData.get('sku')).trim().toUpperCase();
+        const channel = (formData.get('channel')).trim().toUpperCase();
         
         try {
           const response = await fetch('/api/generate', {
@@ -117,19 +127,36 @@ const pageTitle = "产品防伪码 Demo";
           if (!response.ok) {
             const errorData = await response.json();
             generatedCodeOutput.value = `Error: ${response.status} ${response.statusText}\n${JSON.stringify(errorData, null, 2)}`;
+            if (qrcodeContainer) {
+              qrcodeContainer.innerHTML = '';
+            }
           } else {
-            const responseData = await response.json() as { securityCode: string };
+            const responseData = await response.json();
             generatedCodeOutput.value = responseData.securityCode;
+            if (qrcodeContainer) {
+              qrcodeContainer.innerHTML = '';
+              new QRCode(qrcodeContainer, {
+                text: QR_BASE_URL + responseData.securityCode,
+                width: 128,
+                height: 128,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                corretLevel: QRCode.CorrectLevel.L
+              });
+            }
           }
         } catch (error) {
-          generatedCodeOutput.value = `Fetch Error: ${error}`;
+          generatedCodeOutput.value = `Error: ${error}`;
+          if (qrcodeContainer) {
+            qrcodeContainer.innerHTML = '';
+          }
         }
       });
       
       validateForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(validateForm);
-        const securityCode = (formData.get('securityCode') as string).trim();
+        const securityCode = (formData.get('securityCode')).trim();
         
         try {
           const response = await fetch('/api/validate', {
