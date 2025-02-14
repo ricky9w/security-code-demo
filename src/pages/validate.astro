@@ -1,7 +1,14 @@
 ---
 import Layout from '../layouts/Layout.astro';
 
+interface Props {
+  codeFromQuery: string;
+}
+
 const pageTitle = "产品防伪码验证";
+const {
+  codeFromQuery = Astro.url.searchParams.get('code') || undefined
+ } = Astro.props;
 ---
 
 <Layout title={pageTitle}>
@@ -36,56 +43,16 @@ const pageTitle = "产品防伪码验证";
     </section>
   </main>
   
-  <script>
+  <script define:vars={{ codeFromQuery }}>
     document.addEventListener('DOMContentLoaded', () => {
-      const generateForm = document.getElementById('generate-form') as HTMLFormElement;
-      const validateForm = document.getElementById('validate-form') as HTMLFormElement;
-      const generatedCodeOutput = document.getElementById('generated-code-output') as HTMLTextAreaElement;
-      const validationResultOutput = document.getElementById('validation-result-output') as HTMLTextAreaElement;
-      const clickableOutput = document.querySelector('.clickable-output') as HTMLElement;
-      
-      clickableOutput?.addEventListener('click', async () => {
-        const text = generatedCodeOutput.value;
-        if (!text) return;
-        
-        try {
-          await navigator.clipboard.writeText(text);
-        } catch (err) {
-          console.error('复制失败:', err);
-        }
-      });
-      
-      generateForm?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(generateForm);
-        const sku = (formData.get('sku') as string).trim().toUpperCase();
-        const channel = (formData.get('channel') as string).trim().toUpperCase();
-        
-        try {
-          const response = await fetch('/api/generate', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ sku, channel })
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            generatedCodeOutput.value = `Error: ${response.status} ${response.statusText}\n${JSON.stringify(errorData, null, 2)}`;
-          } else {
-            const responseData = await response.json() as { securityCode: string };
-            generatedCodeOutput.value = responseData.securityCode;
-          }
-        } catch (error) {
-          generatedCodeOutput.value = `Fetch Error: ${error}`;
-        }
-      });
+      const validateForm = document.getElementById('validate-form');
+      const validationResultOutput = document.getElementById('validation-result-output');
+      const validateCodeInput = document.getElementById('validate-code-input');
       
       validateForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(validateForm);
-        const securityCode = (formData.get('securityCode') as string).trim();
+        const securityCode = (formData.get('securityCode')).trim();
         
         try {
           const response = await fetch('/api/validate', {
@@ -107,6 +74,11 @@ const pageTitle = "产品防伪码验证";
           validationResultOutput.value = `Fetch Error: ${error}`;
         }
       });
+
+      if (codeFromQuery) {
+        validateCodeInput.value = codeFromQuery;
+        validateForm.requestSubmit();
+      }
     });
   </script>
 </Layout>
